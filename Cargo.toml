@@ -167,7 +167,11 @@ members = [
     "testing/ef-tests/",
     "testing/testing-utils",
     "crates/tracing-otlp",
+<<<<<<< Updated upstream
     "crates/block-access-list",
+=======
+    "crates/eip-7928"
+>>>>>>> Stashed changes
 ]
 default-members = ["bin/reth"]
 exclude = ["docs/cli"]
