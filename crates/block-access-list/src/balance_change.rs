@@ -1,5 +1,5 @@
 //! Contains the `BalanceChange` struct, which represents a post balance for an account.
-//! Single balance change: tx_index -> post_balance
+//! Single balance change: `tx_index` -> `post_balance`
 
 use alloy_primitives::TxIndex;
 
@@ -14,17 +14,17 @@ pub struct BalanceChange {
 
 impl BalanceChange {
     /// Creates a new `BalanceChange`.
-    pub fn new(tx_index: TxIndex, post_balance: u128) -> Self {
+    pub const fn new(tx_index: TxIndex, post_balance: u128) -> Self {
         Self { tx_index, post_balance }
     }
 
     /// Returns the transaction index.
-    pub fn tx_index(&self) -> TxIndex {
+    pub const fn tx_index(&self) -> TxIndex {
         self.tx_index
     }
 
     /// Returns the post-transaction balance.
-    pub fn post_balance(&self) -> u128 {
+    pub const fn post_balance(&self) -> u128 {
         self.post_balance
     }
 }

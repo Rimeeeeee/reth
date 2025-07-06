@@ -1,5 +1,5 @@
 //! Contains the `CodeChange` struct, which represents a new code for an account.
-//! Single code change: tx_index -> new_code
+//! Single code change: `tx_index` -> `new_code`
 
 use alloy_primitives::{Bytes, TxIndex};
 
@@ -18,7 +18,7 @@ impl CodeChange {
     }
 
     /// Returns the transaction index.
-    pub fn tx_index(&self) -> TxIndex {
+    pub const fn tx_index(&self) -> TxIndex {
         self.tx_index
     }
 
