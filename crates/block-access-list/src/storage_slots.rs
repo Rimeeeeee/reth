@@ -3,7 +3,7 @@ use alloc::vec::Vec;
 use alloy_primitives::StorageKey;
 
 /// Represents all changes made to a single storage slot across multiple transactions.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct SlotChanges {
     /// The storage slot key being modified.
     pub slot: StorageKey,
@@ -28,13 +28,13 @@ impl SlotChanges {
 
     /// Returns `true` if no changes have been recorded.
     #[inline]
-    pub fn is_empty(&self) -> bool {
+    pub const fn is_empty(&self) -> bool {
         self.changes.is_empty()
     }
 
     /// Returns the number of changes recorded for this slot.
     #[inline]
-    pub fn len(&self) -> usize {
+    pub const fn len(&self) -> usize {
         self.changes.len()
     }
 }

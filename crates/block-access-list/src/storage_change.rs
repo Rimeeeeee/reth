@@ -12,7 +12,7 @@ pub struct StorageChange {
 impl StorageChange {
     /// Creates a new `StorageChange`.
     #[inline]
-    pub fn new(tx_index: TxIndex, new_value: StorageValue) -> Self {
+    pub const fn new(tx_index: TxIndex, new_value: StorageValue) -> Self {
         Self { tx_index, new_value }
     }
 
@@ -24,13 +24,13 @@ impl StorageChange {
 
     /// Returns true if this change was made by the given transaction.
     #[inline]
-    pub fn is_from_tx(&self, tx: TxIndex) -> bool {
+    pub const fn is_from_tx(&self, tx: TxIndex) -> bool {
         self.tx_index == tx
     }
 
     /// Returns a copy with a different storage value.
     #[inline]
-    pub fn with_value(&self, value: StorageValue) -> Self {
+    pub const fn with_value(&self, value: StorageValue) -> Self {
         Self { tx_index: self.tx_index, new_value: value }
     }
 }
