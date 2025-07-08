@@ -1,6 +1,6 @@
 use alloy_primitives::{
     map::{foldhash::HashSet, HashMap},
-    Address, StorageKey, StorageValue, TxIndex, B256,
+    Address, StorageKey, StorageValue, TxIndex,
 };
 use revm::{
     bytecode::opcode,
@@ -12,6 +12,9 @@ use revm::{
     },
     Inspector,
 };
+
+/// May need edgecases as per Eip and also needs Ordering
+/// TODO! Use maube BTreeMap or similar to keep insertion order
 
 /// An Inspector that tracks warm and cold storage slot accesses.
 #[derive(Debug, Clone, Default)]
@@ -32,28 +35,28 @@ impl StorageChangeInspector {
         Self::default()
     }
 
-    ///
+    /// Sets the transaction index for the current transaction.
     pub fn set_tx_index(&mut self, index: TxIndex) {
         self.tx_index = index;
     }
 
-    ///
+    /// Sets the pre-state for storage slots.
     pub fn set_pre_state(&mut self, pre: HashMap<Address, HashMap<StorageKey, StorageValue>>) {
         self.pre_state = pre;
     }
 
-    ///
+    /// Resets the inspector state, clearing all tracked storage reads and writes.
     pub fn reset(&mut self) {
         self.storage_read.clear();
         self.storage_write.clear();
     }
 
-    ///
+    /// Returns the transaction index of the current transaction.
     pub fn reads(&self) -> &HashMap<Address, HashSet<StorageKey>> {
         &self.storage_read
     }
 
-    ///
+    /// Returns the storage writes map, which contains the address, slot, and new value.
     pub fn writes(&self) -> &HashMap<Address, HashMap<StorageKey, StorageValue>> {
         &self.storage_write
     }
@@ -109,6 +112,54 @@ impl StorageChangeInspector {
                 (*addr, untouched)
             })
             .collect()
+    }
+
+    /// Returns all storage slots that were **read** during execution but not considered true
+    /// writes.
+    ///
+    /// Includes:
+    /// - Slots accessed via `SLOAD` but not written (`SSTORE`)
+    /// - Slots written via `SSTORE` with the same value as the pre-state (no-op writes)
+    /// - Slots present in pre-state but untouched (neither read nor written)
+    pub fn get_bal_storage_reads(&self) -> HashMap<Address, HashSet<StorageKey>> {
+        let mut result = HashMap::<Address, HashSet<StorageKey>>::default();
+        for (addr, slots) in self.read_only_slots() {
+            result.entry(addr).or_default().extend(slots);
+        }
+        for (addr, slots) in self.unchanged_writes() {
+            result.entry(addr).or_default().extend(slots);
+        }
+        for (addr, slots) in self.untouched_pre_state_slots() {
+            result.entry(addr).or_default().extend(slots);
+        }
+
+        result
+    }
+
+    /// Returns all storage slots that were written with meaningful changes.
+    ///
+    /// Includes:
+    /// - Value changes: where the post-value differs from the pre-value
+    /// - Zeroed slots: where a non-zero pre-value was written to zero
+    pub fn get_bal_storage_writes(&self) -> HashMap<Address, HashMap<StorageKey, StorageValue>> {
+        let mut writes: HashMap<Address, HashMap<StorageKey, StorageValue>> = HashMap::default();
+
+        for (addr, slots) in &self.storage_write {
+            let default_pre = HashMap::default();
+            let pre = self.pre_state.get(addr).unwrap_or(&default_pre);
+
+            for (slot, new_val) in slots {
+                let old_val = pre.get(slot).copied().unwrap_or_default();
+                let changed = new_val != &old_val;
+                let zeroed = old_val != StorageValue::ZERO && *new_val == StorageValue::ZERO;
+
+                if changed || zeroed {
+                    writes.entry(*addr).or_default().insert(*slot, *new_val);
+                }
+            }
+        }
+
+        writes
     }
 }
 
