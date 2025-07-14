@@ -661,7 +661,6 @@ dependencies = [
  "itertools 0.14.0",
  "serde",
  "serde_json",
- "serde_with",
  "thiserror 2.0.12",
 ]
 
@@ -7282,7 +7281,7 @@ dependencies = [
 
 [[package]]
 name = "reth-block-access-list"
-version = "1.5.0"
+version = "1.5.1"
 dependencies = [
  "alloy-primitives",
  "revm",
