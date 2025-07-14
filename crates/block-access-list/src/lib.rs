@@ -1,6 +1,4 @@
 //! Block-level access lists for Reth.
 
-extern crate alloc;
-
-/// Inspectors for block-level access lists.
+/// Inspector Modules
 pub mod inspector;

@@ -1,2 +1,3 @@
-/// Inspector to track storage changes.
+//! Inspectors module
+/// Storage Inspector
 pub mod storage;
