@@ -102,7 +102,7 @@ impl StorageChangeInspector {
     }
 
     /// Returns all storage writes that changed the state.
-    pub fn reads(&self) -> &BTreeMap<Address, BTreeSet<StorageKey>> {
+    pub const fn reads(&self) -> &BTreeMap<Address, BTreeSet<StorageKey>> {
         &self.storage_read
     }
 
