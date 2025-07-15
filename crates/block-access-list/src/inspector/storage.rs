@@ -12,13 +12,18 @@ use revm::{
     Inspector,
 };
 
+/// Alias for `storage_read` in `StorageChangeInspector`.
+pub type StorageReads = BTreeMap<Address, BTreeSet<StorageKey>>;
+/// Alias for `storage_write` in `StorageChangeInspector`.
+pub type StorageWrites = BTreeMap<Address, BTreeMap<StorageKey, (StorageValue, StorageValue)>>;
+
 /// An Inspector that tracks warm and cold storage slot accesses.
 #[derive(Debug, Clone, Default)]
 pub struct StorageChangeInspector {
     /// Tracks reads (SLOAD)
-    pub storage_read: BTreeMap<Address, BTreeSet<StorageKey>>,
+    pub storage_read: StorageReads,
     /// Tracks writes (SSTORE): address → slot → (pre, post)
-    pub storage_write: BTreeMap<Address, BTreeMap<StorageKey, (StorageValue, StorageValue)>>,
+    pub storage_write: StorageWrites,
     /// Current transaction index
     pub tx_index: TxIndex,
 }
@@ -38,11 +43,12 @@ impl StorageChangeInspector {
     pub fn reset(&mut self) {
         self.storage_read.clear();
         self.storage_write.clear();
+        self.tx_index = TxIndex::default();
     }
 
     /// Slots that were only read (SLOAD) but not written (SSTORE)
-    pub fn read_only_slots(&self) -> BTreeMap<Address, BTreeSet<StorageKey>> {
-        let mut result: BTreeMap<Address, BTreeSet<StorageKey>> = BTreeMap::new();
+    pub fn read_only_slots(&self) -> StorageReads {
+        let mut result: StorageReads = BTreeMap::new();
         for (addr, read_slots) in &self.storage_read {
             let written = self
                 .storage_write
@@ -57,8 +63,8 @@ impl StorageChangeInspector {
     }
 
     /// Slots written with same value as pre (no-op SSTOREs)
-    pub fn unchanged_writes(&self) -> BTreeMap<Address, BTreeSet<StorageKey>> {
-        let mut result: BTreeMap<Address, BTreeSet<StorageKey>> = BTreeMap::new();
+    pub fn unchanged_writes(&self) -> StorageReads {
+        let mut result: StorageReads = BTreeMap::new();
         for (addr, slots) in &self.storage_write {
             for (slot, (pre, post)) in slots {
                 if pre == post {
@@ -70,8 +76,8 @@ impl StorageChangeInspector {
     }
 
     /// Returns all "read" slots (did not result in state change)
-    pub fn get_bal_storage_reads(&self) -> BTreeMap<Address, BTreeSet<StorageKey>> {
-        let mut result: BTreeMap<Address, BTreeSet<StorageKey>> = BTreeMap::new();
+    pub fn get_bal_storage_reads(&self) -> StorageReads {
+        let mut result: StorageReads = BTreeMap::new();
 
         for (addr, slots) in self.read_only_slots() {
             result.entry(addr).or_default().extend(slots);
@@ -84,11 +90,8 @@ impl StorageChangeInspector {
     }
 
     /// Returns all storage writes that changed the state
-    pub fn get_bal_storage_writes(
-        &self,
-    ) -> BTreeMap<Address, BTreeMap<StorageKey, (StorageValue, StorageValue)>> {
-        let mut result: BTreeMap<Address, BTreeMap<StorageKey, (StorageValue, StorageValue)>> =
-            BTreeMap::new();
+    pub fn get_bal_storage_writes(&self) -> StorageWrites {
+        let mut result: StorageWrites = BTreeMap::new();
 
         for (addr, slots) in &self.storage_write {
             for (slot, (pre, post)) in slots {
@@ -102,14 +105,12 @@ impl StorageChangeInspector {
     }
 
     /// Returns all storage writes that changed the state.
-    pub const fn reads(&self) -> &BTreeMap<Address, BTreeSet<StorageKey>> {
+    pub const fn reads(&self) -> &StorageReads {
         &self.storage_read
     }
 
     /// Returns all storage writes that changed the state.
-    pub const fn writes(
-        &self,
-    ) -> &BTreeMap<Address, BTreeMap<StorageKey, (StorageValue, StorageValue)>> {
+    pub const fn writes(&self) -> &StorageWrites {
         &self.storage_write
     }
 }
