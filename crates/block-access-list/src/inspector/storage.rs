@@ -9,7 +9,7 @@ use revm::{
         interpreter_types::{InputsTr, Jumps},
         Interpreter,
     },
-    Inspector,
+    Inspector, JournalEntry,
 };
 
 /// Alias for `storage_read` in `StorageChangeInspector`.
@@ -126,45 +126,114 @@ where
 
         match opcode {
             opcode::SLOAD => {
+                println!("OPCODE: {:02x}", opcode);
                 if let Ok(slot) = interp.stack.peek(0) {
                     let key = StorageKey::from(slot.to_be_bytes());
                     self.storage_read.entry(address).or_default().insert(key);
 
-                    if let Some(revm::JournalEntry::StorageChanged {
-                        address: addr,
-                        key: slot_key,
-                        had_value,
-                    }) = journal.journal().last()
-                    {
-                        if *addr == address && *slot_key == key.into() {
-                            let post = journal.evm_state()[addr].storage[slot_key].present_value();
-                            self.storage_write
-                                .entry(address)
-                                .or_default()
-                                .entry(key)
-                                .or_insert((*had_value, post));
+                    for entry in journal.journal().iter().rev() {
+                        if let revm::JournalEntry::StorageChanged {
+                            address: changed_addr,
+                            key: slot_key,
+                            had_value,
+                        } = entry
+                        {
+                            if *changed_addr == address && *slot_key == key.into() {
+                                let post = journal.evm_state()[changed_addr].storage[slot_key]
+                                    .present_value();
+                                self.storage_write
+                                    .entry(address)
+                                    .or_default()
+                                    .entry(key)
+                                    .or_insert((*had_value, post));
+                                break;
+                            }
                         }
                     }
                 }
             }
 
-            opcode::SSTORE => {
-                if let (Ok(val), Ok(slot)) = (interp.stack.peek(0), interp.stack.peek(1)) {
-                    let key = StorageKey::from(slot.to_be_bytes());
-                    let value = StorageValue::from(val);
+            // opcode::SSTORE => {
+            //     if let Ok(slot) = interp.stack.peek(1) {
+            //         let key = StorageKey::from(slot.to_be_bytes());
+            //         // let address = context.address;
+            //         let journal = context.journal_ref();
 
-                    if let Some(revm::JournalEntry::StorageChanged {
-                        address: addr,
-                        key: slot_key,
-                        had_value,
-                    }) = journal.journal().last()
-                    {
-                        if *addr == address && *slot_key == key.into() {
-                            self.storage_write
-                                .entry(address)
-                                .or_default()
-                                .insert(key, (*had_value, value));
+            //         let mut found = false;
+
+            //         for entry in journal.journal().iter().rev() {
+            //             if let JournalEntry::StorageChanged {
+            //                 address: changed_addr,
+            //                 key: slot_key,
+            //                 had_value,
+            //             } = entry
+            //             {
+            //                 if *changed_addr == address && *slot_key == key.into() {
+            //                     let post = journal.evm_state()[changed_addr].storage[slot_key]
+            //                         .present_value();
+
+            //                     self.storage_write
+            //                         .entry(address)
+            //                         .or_default()
+            //                         .insert(key, (*had_value, post));
+            //                     found = true;
+            //                     break;
+            //                 }
+            //             }
+            //         }
+
+            //         if !found {
+            //             self.storage_write
+            //                 .entry(address)
+            //                 .or_default()
+            //                 .insert(key, (StorageValue::ZERO, StorageValue::ZERO));
+            //         }
+            //     }
+            // }
+            _ => {}
+        }
+    }
+
+    fn step_end(&mut self, interp: &mut Interpreter, context: &mut CTX) {
+        let opcode = interp.bytecode.opcode();
+        let address = interp.input.target_address();
+        // let journal = context.journal_ref();
+
+        match opcode {
+            opcode::SSTORE => {
+                if let Ok(slot) = interp.stack.peek(1) {
+                    let key = StorageKey::from(slot.to_be_bytes());
+                    // let address = context.address;
+                    let journal = context.journal_ref();
+
+                    let mut found = false;
+
+                    for entry in journal.journal().iter().rev() {
+                        if let JournalEntry::StorageChanged {
+                            address: changed_addr,
+                            key: slot_key,
+                            had_value,
+                        } = entry
+                        {
+                            if *changed_addr == address && *slot_key == key.into() {
+                                let post = journal.evm_state()[changed_addr].storage[slot_key]
+                                    .present_value();
+
+                                self.storage_write
+                                    .entry(address)
+                                    .or_default()
+                                    .insert(key, (*had_value, post));
+                                found = true;
+                                break;
+                            }
                         }
+                    }
+
+                    if !found {
+                        self.storage_write
+                            .entry(address)
+                            .or_default()
+                            .insert(key, (StorageValue::ZERO, StorageValue::ZERO));
                     }
                 }
             }
