@@ -6,7 +6,7 @@ on:
   pull_request:
   merge_group:
   push:
-    branches: [main]
+    branches: ["**"]
 
 env:
   CARGO_TERM_COLOR: always
@@ -43,4 +43,3 @@ jobs:
             --exclude 'op-reth' \
             --exclude 'reth' \
             -E 'binary(e2e_testsuite)'
-
