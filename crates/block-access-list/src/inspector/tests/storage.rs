@@ -84,81 +84,79 @@ fn test_counter_storage_change_inspector() {
     let mut current_nonce = 0;
 
     let mut insp_deploy = StorageChangeInspector::new();
-    let _ = {
-        let mut evm = context.clone().build_mainnet_with_inspector(&mut insp_deploy);
-        let deploy_result = evm
+    let mut evm = context.clone().build_mainnet_with_inspector(&mut insp_deploy);
+    let deploy_result = evm
+        .inspect_tx(TxEnv {
+            caller: deployer,
+            gas_limit: 1_000_000,
+            kind: TransactTo::Create,
+            nonce: current_nonce,
+            data: code.into(),
+            ..Default::default()
+        })
+        .unwrap();
+    current_nonce += 1;
+
+    let contract = match deploy_result.result {
+        ExecutionResult::Success { output: Output::Create(_, Some(addr)), .. } => addr,
+        _ => panic!("Contract deployment failed"),
+    };
+
+    evm.ctx().db_mut().commit(deploy_result.state);
+    let db_after_deploy = evm.ctx().db().clone();
+    context = context.with_db(db_after_deploy);
+
+    println!("Deployed contract: {contract:?}");
+
+    let mut insp_set = StorageChangeInspector::new();
+    {
+        let mut evm = context.clone().build_mainnet_with_inspector(&mut insp_set);
+        let set_number =
+            hex!("3fb5c1cb000000000000000000000000000000000000000000000000000000000000002a"); // setNumber(42)
+        let set_result = evm
             .inspect_tx(TxEnv {
                 caller: deployer,
-                gas_limit: 1_000_000,
-                kind: TransactTo::Create,
+                gas_limit: 500_000,
+                kind: TransactTo::Call(contract),
+                data: set_number.into(),
                 nonce: current_nonce,
-                data: code.into(),
                 ..Default::default()
             })
             .unwrap();
         current_nonce += 1;
 
-        let contract = match deploy_result.result {
-            ExecutionResult::Success { output: Output::Create(_, Some(addr)), .. } => addr,
-            _ => panic!("Contract deployment failed"),
-        };
+        println!("set_result: {:?}", set_result.result);
+        evm.ctx().db_mut().commit(set_result.state);
+        let db_after_set = evm.ctx().db().clone();
+        context = context.with_db(db_after_set);
+    }
 
-        evm.ctx().db_mut().commit(deploy_result.state);
-        let db_after_deploy = evm.ctx().db().clone();
-        context = context.with_db(db_after_deploy); // ✅ No `let`
+    println!("== setNumber(42) Writes ==");
+    println!("{:#?}", insp_set.writes());
+    println!("== setNumber(42) Reads ==");
+    println!("{:#?}", insp_set.reads());
 
-        println!("Deployed contract: {:?}", contract);
+    let mut insp_inc = StorageChangeInspector::new();
+    {
+        let mut evm = context.build_mainnet_with_inspector(&mut insp_inc);
+        let increment = hex!("d09de08a"); // increment()
+        let inc_result = evm
+            .inspect_tx(TxEnv {
+                caller: deployer,
+                gas_limit: 500_000,
+                kind: TransactTo::Call(contract),
+                data: increment.into(),
+                nonce: current_nonce,
+                ..Default::default()
+            })
+            .unwrap();
 
-        let mut insp_set = StorageChangeInspector::new();
-        {
-            let mut evm = context.clone().build_mainnet_with_inspector(&mut insp_set);
-            let set_number =
-                hex!("3fb5c1cb000000000000000000000000000000000000000000000000000000000000002a"); // setNumber(42)
-            let set_result = evm
-                .inspect_tx(TxEnv {
-                    caller: deployer,
-                    gas_limit: 500_000,
-                    kind: TransactTo::Call(contract),
-                    data: set_number.into(),
-                    nonce: current_nonce,
-                    ..Default::default()
-                })
-                .unwrap();
-            current_nonce += 1;
+        println!("inc_result: {:?}", inc_result.result);
+        evm.ctx().db_mut().commit(inc_result.state);
+    }
 
-            println!("set_result: {:?}", set_result.result);
-            evm.ctx().db_mut().commit(set_result.state);
-            let db_after_set = evm.ctx().db().clone();
-            context = context.with_db(db_after_set);
-        }
-
-        println!("== setNumber(42) Writes ==");
-        println!("{:#?}", insp_set.writes());
-        println!("== setNumber(42) Reads ==");
-        println!("{:#?}", insp_set.reads());
-
-        let mut insp_inc = StorageChangeInspector::new();
-        {
-            let mut evm = context.clone().build_mainnet_with_inspector(&mut insp_inc);
-            let increment = hex!("d09de08a"); // increment()
-            let inc_result = evm
-                .inspect_tx(TxEnv {
-                    caller: deployer,
-                    gas_limit: 500_000,
-                    kind: TransactTo::Call(contract),
-                    data: increment.into(),
-                    nonce: current_nonce,
-                    ..Default::default()
-                })
-                .unwrap();
-
-            println!("inc_result: {:?}", inc_result.result);
-            evm.ctx().db_mut().commit(inc_result.state);
-        }
-
-        println!("== increment() Writes ==");
-        println!("{:#?}", insp_inc.writes());
-        println!("== increment() Reads ==");
-        println!("{:#?}", insp_inc.reads());
-    };
+    println!("== increment() Writes ==");
+    println!("{:#?}", insp_inc.writes());
+    println!("== increment() Reads ==");
+    println!("{:#?}", insp_inc.reads());
 }
