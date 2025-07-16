@@ -53,10 +53,10 @@ impl StorageChangeInspector {
             let written = self
                 .storage_write
                 .get(addr)
-                .map(|w| w.keys().cloned().collect::<BTreeSet<_>>())
+                .map(|w| w.keys().copied().collect::<BTreeSet<_>>())
                 .unwrap_or_default();
 
-            let read_only = read_slots.difference(&written).cloned().collect();
+            let read_only = read_slots.difference(&written).copied().collect();
             result.insert(*addr, read_only);
         }
         result
@@ -124,63 +124,54 @@ where
         let address = interp.input.target_address();
         let journal = context.journal_ref();
 
-        match opcode {
-            opcode::SLOAD => {
-                if let Ok(slot) = interp.stack.peek(0) {
-                    let key = StorageKey::from(slot.to_be_bytes());
-                    self.storage_read.entry(address).or_default().insert(key);
+        if opcode == opcode::SLOAD {
+            if let Ok(slot) = interp.stack.peek(0) {
+                let key = StorageKey::from(slot.to_be_bytes());
+                self.storage_read.entry(address).or_default().insert(key);
 
-                    for entry in journal.journal().iter().rev() {
-                        if let revm::JournalEntry::StorageChanged {
-                            address: changed_addr,
-                            key: slot_key,
-                            had_value,
-                        } = entry
-                        {
-                            if *changed_addr == address && *slot_key == key.into() {
-                                let post = journal.evm_state()[changed_addr].storage[slot_key]
-                                    .present_value();
-                                self.storage_write
-                                    .entry(address)
-                                    .or_default()
-                                    .entry(key)
-                                    .or_insert((*had_value, post));
-                                break;
-                            }
+                for entry in journal.journal().iter().rev() {
+                    if let revm::JournalEntry::StorageChanged {
+                        address: changed_addr,
+                        key: slot_key,
+                        had_value,
+                    } = entry
+                    {
+                        if *changed_addr == address && *slot_key == key.into() {
+                            let post =
+                                journal.evm_state()[changed_addr].storage[slot_key].present_value();
+                            self.storage_write
+                                .entry(address)
+                                .or_default()
+                                .entry(key)
+                                .or_insert((*had_value, post));
+                            break;
                         }
                     }
                 }
             }
-            _ => {}
         }
     }
 
     fn step_end(&mut self, interp: &mut Interpreter, context: &mut CTX) {
         let opcode = interp.bytecode.opcode();
         let address = interp.input.target_address();
-        match opcode {
-            opcode::SSTORE => {
-                if let Ok(slot) = interp.stack.peek(0) {
-                    let key = StorageKey::from(slot.to_be_bytes());
+        if opcode == opcode::SSTORE {
+            if let Ok(slot) = interp.stack.peek(0) {
+                let key = StorageKey::from(slot.to_be_bytes());
 
-                    // Load pre-value from existing recorded value or DB
-                    let pre = self
-                        .storage_write
-                        .get(&address)
-                        .and_then(|m| m.get(&key).map(|(pre, _)| *pre))
-                        .unwrap_or_else(|| {
-                            context.db_mut().storage(address, slot).unwrap_or_default()
-                        });
+                // Load pre-value from existing recorded value or DB
+                let pre = self
+                    .storage_write
+                    .get(&address)
+                    .and_then(|m| m.get(&key).map(|(pre, _)| *pre))
+                    .unwrap_or_else(|| context.db_mut().storage(address, slot).unwrap_or_default());
 
-                    // Get current top of stack (new value to be stored)
-                    let post = interp.stack.peek(1).unwrap_or(StorageValue::ZERO);
+                // Get current top of stack (new value to be stored)
+                let post = interp.stack.peek(1).unwrap_or(StorageValue::ZERO);
 
-                    // Update collapsed (final) view of SSTORE
-                    self.storage_write.entry(address).or_default().insert(key, (pre, post));
-                }
+                // Update collapsed (final) view of SSTORE
+                self.storage_write.entry(address).or_default().insert(key, (pre, post));
             }
-
-            _ => {}
         }
     }
 }
