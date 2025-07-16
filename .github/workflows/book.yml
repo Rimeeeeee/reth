@@ -6,7 +6,7 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: ["**"]
+    branches: [main]
     types: [opened, reopened, synchronize, closed]
   merge_group:
 
