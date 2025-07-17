@@ -43,3 +43,4 @@ jobs:
             --exclude 'op-reth' \
             --exclude 'reth' \
             -E 'binary(e2e_testsuite)'
+            
