@@ -1,25 +1,27 @@
 #!/usr/bin/env bash
-set -eo pipefail
+set -euo pipefail
 
 # Create the hive_assets directory
-mkdir hive_assets/
+mkdir -p ../hive_assets
 
 cd hivetests
 go build .
 
-./hive -client reth # first builds and caches the client
+# Build and cache reth client with one sim
+./hive -client reth --sim devp2p --sim.timelimit 1s || true
 
 # Run each hive command in the background for each simulator and wait
 echo "Building images"
 ./hive -client reth --sim "ethereum/eest" \
   --sim.buildarg repo=https://github.com/fselmo/execution-spec-tests.git \
   --sim.buildarg branch=feat/amsterdam-and-block-access-lists \
-  -sim.timelimit 1s || true &
-./hive -client reth --sim "devp2p" -sim.timelimit 1s || true &
-./hive -client reth --sim "ethereum/rpc-compat" -sim.timelimit 1s || true &
-./hive -client reth --sim "smoke/genesis" -sim.timelimit 1s || true &
-./hive -client reth --sim "smoke/network" -sim.timelimit 1s || true &
-./hive -client reth --sim "ethereum/sync" -sim.timelimit 1s || true &
+  --sim.timelimit 1s || true &
+
+./hive -client reth --sim "devp2p" --sim.timelimit 1s || true &
+./hive -client reth --sim "ethereum/rpc-compat" --sim.timelimit 1s || true &
+./hive -client reth --sim "smoke/genesis" --sim.timelimit 1s || true &
+./hive -client reth --sim "smoke/network" --sim.timelimit 1s || true &
+./hive -client reth --sim "ethereum/sync" --sim.timelimit 1s || true &
 wait
 
 # Run docker save in parallel, wait and exit on error
@@ -38,7 +40,7 @@ for pid in "${saving_pids[@]}"; do
     wait "$pid" || exit
 done
 
-# Make sure we don't rebuild images on the CI jobs
+# Prevent CI jobs from rebuilding images
 git apply ../.github/assets/hive/no_sim_build.diff
 go build .
 mv ./hive ../hive_assets/
