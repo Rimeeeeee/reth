@@ -4,8 +4,10 @@ name: hive
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "0 */6 * * *"
+  pull_request:
+  push:
+    branches:
+      - try-spec-tests
 
 env:
   CARGO_TERM_COLOR: always
@@ -16,26 +18,31 @@ concurrency:
 
 jobs:
   prepare-reth:
+    name: Build Reth Docker Image
     uses: ./.github/workflows/prepare-reth.yml
     with:
-      image_tag: ghcr.io/paradigmxyz/reth:latest
+      image_tag: reth:local # 👈 use local image tag, not Paradigm
       binary_name: reth
 
   prepare-hive:
-    if: github.repository == 'paradigmxyz/reth'
-    timeout-minutes: 45
+    name: Prepare Hive Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v5
+      - name: Checkout repo
+        uses: actions/checkout@v5
+
       - name: Checkout hive tests
         uses: actions/checkout@v5
         with:
           repository: ethereum/hive
           path: hivetests
 
-      - uses: actions/setup-go@v5
+      - name: Set up Go
+        uses: actions/setup-go@v5
         with:
           go-version: "^1.13.1"
+
       - run: go version
 
       - name: Build hive assets
