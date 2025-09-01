@@ -12,9 +12,10 @@ go build .
 
 # Run each hive command in the background for each simulator and wait
 echo "Building images"
+# Use GIT_URL and GIT_REF for EEST sim (not repo/branch)
 ./hive -client reth --sim "ethereum/eest" \
-  --sim.buildarg repo=https://github.com/fselmo/execution-spec-tests.git \
-  --sim.buildarg branch=feat/amsterdam-and-block-access-lists \
+  --sim.buildarg GIT_URL=https://github.com/fselmo/execution-spec-tests.git \
+  --sim.buildarg GIT_REF=feat/amsterdam-and-block-access-lists \
   --sim.timelimit 1s || true &
 
 ./hive -client reth --sim "devp2p" --sim.timelimit 1s || true &
