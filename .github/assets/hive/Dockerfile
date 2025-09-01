@@ -1,13 +1,15 @@
 # syntax=docker.io/docker/dockerfile:1.7-labs
 
 #
-# We'll use cargo-chef to speed up the build
+# Cargo Chef base
 #
 FROM lukemathwalker/cargo-chef:latest-rust-1 AS chef
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get -y upgrade && apt-get install -y libclang-dev pkg-config
+# Install system dependencies needed for build
+RUN apt-get update && apt-get -y upgrade && \
+    apt-get install -y libclang-dev pkg-config && \
+    rm -rf /var/lib/apt/lists/*
 
 #
 # Planner stage: compute dependency graph
@@ -39,6 +41,7 @@ RUN cargo chef cook \
     --recipe-path recipe.json
 
 COPY --exclude=.git --exclude=dist . .
+
 RUN cargo build \
     --profile $BUILD_PROFILE \
     --bin $CARGO_BIN \
@@ -47,16 +50,22 @@ RUN cargo build \
     --locked
 
 #
-# Runtime stage: minimal final image with just the binary
+# Runtime stage: minimal final image
 #
 FROM ubuntu:22.04 AS runtime
 
 ARG CARGO_BIN
+ARG BUILD_PROFILE=hivetests
 WORKDIR /usr/local/bin
 
-# Copy the built binary into the runtime image
-COPY --from=builder /app/target/hivetests/${CARGO_BIN} /usr/local/bin/${CARGO_BIN}
-COPY LICENSE-* ./
+# Install runtime dependencies
+RUN apt-get update && apt-get install -y \
+    libssl3 ca-certificates curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy the built binary
+COPY --from=builder /app/target/${BUILD_PROFILE}/${CARGO_BIN} /usr/local/bin/${CARGO_BIN}
+COPY LICENSE-* ./ 
 
 EXPOSE 30303 30303/udp 9001 8545 8546
 ENV RUST_LOG=debug

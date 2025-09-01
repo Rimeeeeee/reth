@@ -21,7 +21,7 @@ jobs:
     name: Build Reth Docker Image
     uses: ./.github/workflows/prepare-reth.yml
     with:
-      image_tag: reth:local # 👈 local tag
+      image_tag: reth:local
       binary_name: reth
 
   prepare-hive:
@@ -165,5 +165,5 @@ jobs:
         uses: rtCamp/action-slack-notify@v2
         env:
           SLACK_COLOR: ${{ job.status }}
-          SLACK_MESSAGE: "Failed run: https://github.com/paradigmxyz/reth/actions/runs/${{ github.run_id }}"
+          SLACK_MESSAGE: "Failed run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
