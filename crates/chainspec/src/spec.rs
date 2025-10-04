@@ -33,6 +33,10 @@ use reth_network_peers::{
 };
 use reth_primitives_traits::{sync::LazyLock, SealedHeader};
 
+/// The hash of an empty block access list.
+const EMPTY_BLOCK_ACCESS_LIST_HASH: B256 =
+    b256!("0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347");
+
 /// Helper method building a [`Header`] given [`Genesis`] and [`ChainHardforks`].
 pub fn make_genesis_header(genesis: &Genesis, hardforks: &ChainHardforks) -> Header {
     // If London is activated at genesis, we set the initial base fee as per EIP-1559.
@@ -67,6 +71,12 @@ pub fn make_genesis_header(genesis: &Genesis, hardforks: &ChainHardforks) -> Hea
         .active_at_timestamp(genesis.timestamp)
         .then_some(EMPTY_REQUESTS_HASH);
 
+    // If Amsterdam is activated at genesis we set block access list hash empty hash.
+    let block_access_list_hash = hardforks
+        .fork(EthereumHardfork::Amsterdam)
+        .active_at_timestamp(genesis.timestamp)
+        .then_some(EMPTY_BLOCK_ACCESS_LIST_HASH);
+
     Header {
         gas_limit: genesis.gas_limit,
         difficulty: genesis.difficulty,
@@ -82,6 +92,7 @@ pub fn make_genesis_header(genesis: &Genesis, hardforks: &ChainHardforks) -> Hea
         blob_gas_used,
         excess_blob_gas,
         requests_hash,
+        block_access_list_hash,
         ..Default::default()
     }
 }
@@ -685,6 +696,7 @@ impl From<Genesis> for ChainSpec {
             (EthereumHardfork::Bpo3.boxed(), genesis.config.bpo3_time),
             (EthereumHardfork::Bpo4.boxed(), genesis.config.bpo4_time),
             (EthereumHardfork::Bpo5.boxed(), genesis.config.bpo5_time),
+            (EthereumHardfork::Amsterdam.boxed(), genesis.config.amsterdam_time),
         ];
 
         let mut time_hardforks = time_hardfork_opts
@@ -960,6 +972,19 @@ impl ChainSpecBuilder {
     /// Enable Osaka at the given timestamp.
     pub fn with_osaka_at(mut self, timestamp: u64) -> Self {
         self.hardforks.insert(EthereumHardfork::Osaka, ForkCondition::Timestamp(timestamp));
+        self
+    }
+
+    /// Enable Amsterdam at genesis.
+    pub fn amsterdam_activated(mut self) -> Self {
+        self = self.osaka_activated();
+        self.hardforks.insert(EthereumHardfork::Amsterdam, ForkCondition::Timestamp(0));
+        self
+    }
+
+    /// Enable Amsterdam at the given timestamp.
+    pub fn with_amsterdam_at(mut self, timestamp: u64) -> Self {
+        self.hardforks.insert(EthereumHardfork::Amsterdam, ForkCondition::Timestamp(timestamp));
         self
     }
 
@@ -1244,7 +1269,7 @@ Post-merge hard forks (timestamp based):
             Head { number: 101, timestamp: 11313123, ..Default::default() };
         assert_eq!(
             fork_cond_ttd_blocknum_head, fork_cond_ttd_blocknum_expected,
-            "expected satisfy() to return {fork_cond_ttd_blocknum_expected:#?}, but got {fork_cond_ttd_blocknum_expected:#?} ",
+            "expected satisfy() to return {fork_cond_ttd_blocknum_expected:#?}, but got {fork_cond_ttd_blocknum_head:#?} ",
         );
 
         // spec w/ only ForkCondition::Block - test the match arm for ForkCondition::Block to ensure
@@ -1273,7 +1298,7 @@ Post-merge hard forks (timestamp based):
             Head { total_difficulty: U256::from(10_790_000), ..Default::default() };
         assert_eq!(
             fork_cond_ttd_no_new_spec, fork_cond_ttd_no_new_spec_expected,
-            "expected satisfy() to return {fork_cond_ttd_blocknum_expected:#?}, but got {fork_cond_ttd_blocknum_expected:#?} ",
+            "expected satisfy() to return {fork_cond_ttd_no_new_spec_expected:#?}, but got {fork_cond_ttd_no_new_spec:#?} ",
         );
     }
 

@@ -3,6 +3,7 @@
 use crate::Compact;
 use alloy_consensus::Header as AlloyHeader;
 use alloy_primitives::{Address, BlockNumber, Bloom, Bytes, B256, U256};
+use reth_codecs_derive::{add_arbitrary_tests, generate_tests};
 
 /// Block header
 ///
@@ -19,6 +20,7 @@ use alloy_primitives::{Address, BlockNumber, Bloom, Bytes, B256, U256};
 #[cfg_attr(feature = "test-utils", allow(unreachable_pub), visibility::make(pub))]
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Compact)]
 #[reth_codecs(crate = "crate")]
+#[add_arbitrary_tests(crate, compact)]
 pub(crate) struct Header {
     parent_hash: B256,
     ommers_hash: B256,
@@ -56,8 +58,10 @@ pub(crate) struct Header {
 #[cfg_attr(feature = "test-utils", allow(unreachable_pub), visibility::make(pub))]
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Compact)]
 #[reth_codecs(crate = "crate")]
+#[add_arbitrary_tests(crate, compact)]
 pub(crate) struct HeaderExt {
     requests_hash: Option<B256>,
+    block_access_list_hash:Option<B256>
 }
 
 impl HeaderExt {
@@ -78,7 +82,7 @@ impl Compact for AlloyHeader {
     where
         B: bytes::BufMut + AsMut<[u8]>,
     {
-        let extra_fields = HeaderExt { requests_hash: self.requests_hash };
+        let extra_fields = HeaderExt { requests_hash: self.requests_hash,block_access_list_hash:self.block_access_list_hash };
 
         let header = Header {
             parent_hash: self.parent_hash,
@@ -129,11 +133,17 @@ impl Compact for AlloyHeader {
             excess_blob_gas: header.excess_blob_gas,
             parent_beacon_block_root: header.parent_beacon_block_root,
             requests_hash: header.extra_fields.as_ref().and_then(|h| h.requests_hash),
+            block_access_list_hash: header
+                .extra_fields
+                .as_ref()
+                .and_then(|h| h.block_access_list_hash),
             extra_data: header.extra_data,
         };
         (alloy_header, buf)
     }
 }
+
+generate_tests!(#[crate, compact] AlloyHeader, AlloyHeaderTests);
 
 #[cfg(test)]
 mod tests {
@@ -188,7 +198,7 @@ mod tests {
     #[test]
     fn test_extra_fields() {
         let mut header = HOLESKY_BLOCK;
-        header.extra_fields = Some(HeaderExt { requests_hash: Some(B256::random()) });
+        header.extra_fields = Some(HeaderExt { requests_hash: Some(B256::random()),block_access_list_hash:Some(B256::random()) });
 
         let mut encoded_header = vec![];
         let len = header.to_compact(&mut encoded_header);
