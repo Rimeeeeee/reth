@@ -25,7 +25,7 @@ reth-trie-common.workspace = true
 # ethereum
 alloy-primitives.workspace = true
 alloy-genesis.workspace = true
-alloy-consensus.workspace = true
+alloy-consensus = { workspace = true, features = ["amsterdam"] }
 
 # optimism
 reth-optimism-primitives = { workspace = true, optional = true, features = ["serde", "reth-codec"] }
@@ -93,3 +93,4 @@ op = [
     "reth-primitives-traits/op",
 ]
 bench = []
+amsterdam = ["alloy-consensus/amsterdam"]

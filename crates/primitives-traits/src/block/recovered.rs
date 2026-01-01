@@ -449,6 +449,11 @@ impl<B: Block> BlockHeader for RecoveredBlock<B> {
         self.header().requests_hash()
     }
 
+    ///#[cfg(feature = "amsterdam")]
+    fn block_access_list_hash(&self) -> Option<B256> {
+        self.header().block_access_list_hash()
+    }
+
     fn extra_data(&self) -> &Bytes {
         self.header().extra_data()
     }
