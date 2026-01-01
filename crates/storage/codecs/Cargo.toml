@@ -66,13 +66,7 @@ alloy = [
     "dep:reth-zstd-compressors",
 ]
 op = ["alloy", "dep:op-alloy-consensus"]
-test-utils = [
-    "std",
-    "alloy",
-    "arbitrary",
-    "dep:visibility",
-    "dep:arbitrary",
-]
+test-utils = ["std", "alloy", "arbitrary", "dep:visibility", "dep:arbitrary"]
 serde = [
     "alloy-consensus?/serde",
     "alloy-eips?/serde",
@@ -88,3 +82,4 @@ arbitrary = [
     "alloy-trie?/arbitrary",
     "op-alloy-consensus?/arbitrary",
 ]
+amsterdam = ["alloy-consensus?/amsterdam"]

@@ -16,14 +16,14 @@ workspace = true
 reth-chainspec.workspace = true
 reth-codecs-derive.workspace = true
 reth-ethereum-primitives.workspace = true
-reth-primitives-traits.workspace = true
+reth-primitives-traits = { workspace = true }
 
 # ethereum
 alloy-chains = { workspace = true, features = ["rlp"] }
 alloy-eips.workspace = true
 alloy-primitives = { workspace = true, features = ["map"] }
 alloy-rlp = { workspace = true, features = ["derive"] }
-alloy-consensus.workspace = true
+alloy-consensus = { workspace = true }
 
 bytes.workspace = true
 derive_more.workspace = true
@@ -89,3 +89,4 @@ serde = [
     "reth-ethereum-primitives/serde",
     "alloy-hardforks/serde",
 ]
+amsterdam = ["alloy-consensus/amsterdam", "reth-primitives-traits/amsterdam"]

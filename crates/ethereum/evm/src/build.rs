@@ -112,8 +112,8 @@ where
             blob_gas_used: block_blob_gas_used,
             excess_blob_gas,
             requests_hash,
-            //#[cfg(feature = "amsterdam")]
-            block_access_list_hash: None, //todo
+            #[cfg(feature = "amsterdam")]
+            block_access_list_hash: None, // TODO: Replace with real hash
         };
 
         Ok(Block {

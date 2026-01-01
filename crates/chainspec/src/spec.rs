@@ -79,7 +79,7 @@ pub fn make_genesis_header(genesis: &Genesis, hardforks: &ChainHardforks) -> Hea
         .active_at_timestamp(genesis.timestamp)
         .then_some(EMPTY_REQUESTS_HASH);
 
-    // #[cfg(feature = "amsterdam")]
+    #[cfg(feature = "amsterdam")]
     // If Amsterdam is activated at genesis we set block access list hash empty hash.
     let block_access_list_hash = hardforks
         .fork(EthereumHardfork::Amsterdam)
@@ -103,7 +103,7 @@ pub fn make_genesis_header(genesis: &Genesis, hardforks: &ChainHardforks) -> Hea
         blob_gas_used,
         excess_blob_gas,
         requests_hash,
-        //#[cfg(feature = "amsterdam")]
+        #[cfg(feature = "amsterdam")]
         block_access_list_hash,
         ..Default::default()
     }

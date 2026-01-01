@@ -16,7 +16,7 @@ workspace = true
 reth-codecs = { workspace = true, optional = true }
 
 # ethereum
-alloy-consensus = { workspace = true, features = ["k256"] }
+alloy-consensus = { workspace = true, features = ["k256", "amsterdam"] }
 alloy-eips.workspace = true
 alloy-genesis.workspace = true
 alloy-primitives = { workspace = true, features = ["k256"] }
@@ -136,7 +136,6 @@ serde = [
     "rand/serde",
     "reth-codecs?/serde",
     "revm-primitives/serde",
-    "revm-primitives/serde",
     "op-alloy-consensus?/serde",
     "secp256k1?/serde",
     "alloy-trie/serde",
@@ -145,16 +144,8 @@ serde = [
     "rand_08/serde",
     "alloy-rpc-types-eth?/serde",
 ]
-reth-codec = [
-    "dep:reth-codecs",
-    "dep:modular-bitfield",
-    "dep:byteorder",
-]
-op = [
-    "dep:op-alloy-consensus",
-    "reth-codecs?/op",
-]
-rayon = [
-    "dep:rayon",
-]
+reth-codec = ["dep:reth-codecs", "dep:modular-bitfield", "dep:byteorder"]
+op = ["dep:op-alloy-consensus", "reth-codecs?/op"]
+rayon = ["dep:rayon"]
 rpc-compat = ["alloy-rpc-types-eth"]
+amsterdam = ["alloy-consensus/amsterdam", "reth-codecs?/amsterdam"]
