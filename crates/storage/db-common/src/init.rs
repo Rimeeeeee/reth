@@ -332,6 +332,7 @@ where
         Vec::default(),
         block,
         Vec::new(),
+        Vec::new(),
     );
 
     provider.write_state(

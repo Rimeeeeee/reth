@@ -211,6 +211,7 @@ impl<N: ProviderNodeTypes> ConsistentProvider<N> {
             receipts,
             start_block_number,
             Vec::new(),
+            Vec::new(),
         )))
     }
 

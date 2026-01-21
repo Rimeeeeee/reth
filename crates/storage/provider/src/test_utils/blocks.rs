@@ -215,6 +215,7 @@ fn block1(
         }]],
         number,
         Vec::new(),
+        Vec::new(),
     );
 
     let state_root = bundle_state_root(&execution_outcome);
@@ -268,6 +269,7 @@ fn block2(
             )],
         }]],
         number,
+        Vec::new(),
         Vec::new(),
     );
 
@@ -331,6 +333,7 @@ fn block3(
             )],
         }]],
         number,
+        Vec::new(),
         Vec::new(),
     );
 
@@ -415,6 +418,7 @@ fn block4(
         }]],
         number,
         Vec::new(),
+        Vec::new(),
     );
 
     let mut extended = prev_execution_outcome.clone();
@@ -494,6 +498,7 @@ fn block5(
             )],
         }]],
         number,
+        Vec::new(),
         Vec::new(),
     );
 

@@ -1,6 +1,6 @@
 use crate::{BlockExecutionOutput, BlockExecutionResult};
 use alloc::{vec, vec::Vec};
-use alloy_eips::eip7685::Requests;
+use alloy_eips::{eip7685::Requests, eip7928::BlockAccessList};
 use alloy_primitives::{logs_bloom, map::HashMap, Address, BlockNumber, Bloom, Log, B256, U256};
 use reth_primitives_traits::{Account, Bytecode, Receipt, StorageEntry};
 use reth_trie_common::{HashedPostState, KeyHasher};
@@ -59,6 +59,8 @@ pub struct ExecutionOutcome<T = reth_ethereum_primitives::Receipt> {
     /// A transaction may have zero or more requests, so the length of the inner vector is not
     /// guaranteed to be the same as the number of transactions.
     pub requests: Vec<Requests>,
+    /// The collection of EIP-7928 block access lists.
+    pub block_access_list: Vec<BlockAccessList>,
 }
 
 impl<T> Default for ExecutionOutcome<T> {
@@ -68,6 +70,7 @@ impl<T> Default for ExecutionOutcome<T> {
             receipts: Default::default(),
             first_block: Default::default(),
             requests: Default::default(),
+            block_access_list: Default::default(),
         }
     }
 }
@@ -82,8 +85,9 @@ impl<T> ExecutionOutcome<T> {
         receipts: Vec<Vec<T>>,
         first_block: BlockNumber,
         requests: Vec<Requests>,
+        block_access_list: Vec<BlockAccessList>,
     ) -> Self {
-        Self { bundle, receipts, first_block, requests }
+        Self { bundle, receipts, first_block, requests, block_access_list }
     }
 
     /// Creates a new `ExecutionOutcome` from initialization parameters.
@@ -97,6 +101,7 @@ impl<T> ExecutionOutcome<T> {
         receipts: Vec<Vec<T>>,
         first_block: BlockNumber,
         requests: Vec<Requests>,
+        block_access_list: Vec<BlockAccessList>,
     ) -> Self {
         // sort reverts by block number
         let mut reverts = revert_init.into_iter().collect::<Vec<_>>();
@@ -125,7 +130,7 @@ impl<T> ExecutionOutcome<T> {
             contracts_init.into_iter().map(|(code_hash, bytecode)| (code_hash, bytecode.0)),
         );
 
-        Self { bundle, receipts, first_block, requests }
+        Self { bundle, receipts, first_block, requests, block_access_list }
     }
 
     /// Creates a new `ExecutionOutcome` from a single block execution result.
@@ -135,6 +140,7 @@ impl<T> ExecutionOutcome<T> {
             receipts: vec![output.result.receipts],
             first_block: block_number,
             requests: vec![output.result.requests],
+            block_access_list: vec![output.result.block_access_list.unwrap_or_default()],
         }
     }
 
@@ -149,10 +155,12 @@ impl<T> ExecutionOutcome<T> {
             first_block,
             receipts: Vec::with_capacity(results.len()),
             requests: Vec::with_capacity(results.len()),
+            block_access_list: Vec::with_capacity(results.len()),
         };
         for result in results {
             value.receipts.push(result.receipts);
             value.requests.push(result.requests);
+            value.block_access_list.push(result.block_access_list.unwrap_or_default());
         }
         value
     }
@@ -238,15 +246,34 @@ impl<T> ExecutionOutcome<T> {
         &self.receipts
     }
 
+    /// Returns reference to block access lists.
+    pub const fn block_access_list(&self) -> &Vec<BlockAccessList> {
+        &self.block_access_list
+    }
+
     /// Returns mutable reference to receipts.
     pub const fn receipts_mut(&mut self) -> &mut Vec<Vec<T>> {
         &mut self.receipts
+    }
+
+    /// Returns mutable reference to block access lists.
+    pub const fn block_access_list_mut(&mut self) -> &mut Vec<BlockAccessList> {
+        &mut self.block_access_list
     }
 
     /// Return all block receipts
     pub fn receipts_by_block(&self, block_number: BlockNumber) -> &[T] {
         let Some(index) = self.block_number_to_index(block_number) else { return &[] };
         &self.receipts[index]
+    }
+
+    /// Return all block block access list
+    pub fn block_access_list_by_block(
+        &self,
+        block_number: BlockNumber,
+    ) -> Option<&BlockAccessList> {
+        let Some(index) = self.block_number_to_index(block_number) else { return None };
+        self.block_access_list.get(index)
     }
 
     /// Returns an iterator over receipt slices, one per block.
@@ -422,7 +449,7 @@ impl<T> From<(BlockExecutionOutput<T>, BlockNumber)> for ExecutionOutcome<T> {
 #[cfg(feature = "serde-bincode-compat")]
 pub(super) mod serde_bincode_compat {
     use alloc::{borrow::Cow, vec::Vec};
-    use alloy_eips::eip7685::Requests;
+    use alloy_eips::{eip7685::Requests, eip7928::BlockAccessList};
     use alloy_primitives::BlockNumber;
     use reth_primitives_traits::serde_bincode_compat::SerdeBincodeCompat;
     use revm::database::BundleState;
@@ -456,6 +483,7 @@ pub(super) mod serde_bincode_compat {
         first_block: BlockNumber,
         #[expect(clippy::owned_cow)]
         requests: Cow<'a, Vec<Requests>>,
+        block_access_list: Cow<'a, Vec<BlockAccessList>>,
     }
 
     impl<'a, T> From<&'a super::ExecutionOutcome<T>> for ExecutionOutcome<'a, T>
@@ -472,6 +500,7 @@ pub(super) mod serde_bincode_compat {
                     .collect(),
                 first_block: value.first_block,
                 requests: Cow::Borrowed(&value.requests),
+                block_access_list: Cow::Borrowed(&value.block_access_list),
             }
         }
     }
@@ -490,6 +519,7 @@ pub(super) mod serde_bincode_compat {
                     .collect(),
                 first_block: value.first_block,
                 requests: value.requests.into_owned(),
+                block_access_list: value.block_access_list.into_owned(),
             }
         }
     }
@@ -559,6 +589,7 @@ pub(super) mod serde_bincode_compat {
                     receipts: vec![],
                     first_block: 0,
                     requests: vec![],
+                    block_access_list: vec![],
                 },
             };
 
@@ -605,11 +636,18 @@ mod tests {
             receipts: receipts.clone(),
             requests: requests.clone(),
             first_block,
+            block_access_list: vec![BlockAccessList::default()],
         };
 
         // Assert that creating a new ExecutionOutcome using the constructor matches exec_res
         assert_eq!(
-            ExecutionOutcome::new(bundle, receipts.clone(), first_block, requests.clone()),
+            ExecutionOutcome::new(
+                bundle,
+                receipts.clone(),
+                first_block,
+                requests.clone(),
+                vec![BlockAccessList::default()]
+            ),
             exec_res
         );
 
@@ -636,6 +674,7 @@ mod tests {
                 receipts,
                 first_block,
                 requests,
+                vec![BlockAccessList::default()]
             ),
             exec_res
         );
@@ -661,6 +700,7 @@ mod tests {
             receipts,
             requests: vec![],
             first_block,
+            block_access_list: vec![BlockAccessList::default()],
         };
 
         // Test before the first block
@@ -693,6 +733,7 @@ mod tests {
             receipts,
             requests: vec![],
             first_block,
+            block_access_list: vec![BlockAccessList::default()],
         };
 
         // Get logs for block number 123
@@ -722,6 +763,7 @@ mod tests {
             receipts,                   // Include the created receipts
             requests: vec![],           // Empty vector for requests
             first_block,                // Set the first block number
+            ..Default::default()
         };
 
         // Get receipts for block number 123 and convert the result into a vector
@@ -762,6 +804,7 @@ mod tests {
             receipts,                   // Include the created receipts
             requests: vec![],           // Empty vector for requests
             first_block,                // Set the first block number
+            ..Default::default()
         };
 
         // Assert that the length of receipts in exec_res is 1
@@ -776,6 +819,7 @@ mod tests {
             receipts: receipts_empty,   // Include the empty receipts
             requests: vec![],           // Empty vector for requests
             first_block,                // Set the first block number
+            ..Default::default()
         };
 
         // Assert that the length of receipts in exec_res_empty_receipts is 0
@@ -810,8 +854,13 @@ mod tests {
 
         // Create a ExecutionOutcome object with the created bundle, receipts, requests, and
         // first_block
-        let mut exec_res =
-            ExecutionOutcome { bundle: Default::default(), receipts, requests, first_block };
+        let mut exec_res = ExecutionOutcome {
+            bundle: Default::default(),
+            receipts,
+            requests,
+            first_block,
+            ..Default::default()
+        };
 
         // Assert that the revert_to method returns true when reverting to the initial block number.
         assert!(exec_res.revert_to(123));
@@ -854,8 +903,13 @@ mod tests {
         let first_block = 123;
 
         // Create an ExecutionOutcome object.
-        let mut exec_res =
-            ExecutionOutcome { bundle: Default::default(), receipts, requests, first_block };
+        let mut exec_res = ExecutionOutcome {
+            bundle: Default::default(),
+            receipts,
+            requests,
+            first_block,
+            ..Default::default()
+        };
 
         // Extend the ExecutionOutcome object by itself.
         exec_res.extend(exec_res.clone());
@@ -868,6 +922,7 @@ mod tests {
                 receipts: vec![vec![Some(receipt.clone())], vec![Some(receipt)]],
                 requests: vec![Requests::new(vec![request.clone()]), Requests::new(vec![request])],
                 first_block: 123,
+                ..Default::default()
             }
         );
     }
@@ -904,8 +959,13 @@ mod tests {
 
         // Create a ExecutionOutcome object with the created bundle, receipts, requests, and
         // first_block
-        let exec_res =
-            ExecutionOutcome { bundle: Default::default(), receipts, requests, first_block };
+        let exec_res = ExecutionOutcome {
+            bundle: Default::default(),
+            receipts,
+            requests,
+            first_block,
+            ..Default::default()
+        };
 
         // Split the ExecutionOutcome at block number 124
         let result = exec_res.clone().split_at(124);
@@ -916,6 +976,7 @@ mod tests {
             receipts: vec![vec![Some(receipt.clone())]],
             requests: vec![Requests::new(vec![request.clone()])],
             first_block,
+            ..Default::default()
         };
 
         // Define the expected higher ExecutionOutcome after splitting
@@ -924,6 +985,7 @@ mod tests {
             receipts: vec![vec![Some(receipt.clone())], vec![Some(receipt)]],
             requests: vec![Requests::new(vec![request.clone()]), Requests::new(vec![request])],
             first_block: 124,
+            ..Default::default()
         };
 
         // Assert that the split result matches the expected lower and higher outcomes
@@ -994,6 +1056,7 @@ mod tests {
             receipts: Default::default(),
             first_block: 0,
             requests: vec![],
+            ..Default::default()
         };
 
         // Get the changed accounts

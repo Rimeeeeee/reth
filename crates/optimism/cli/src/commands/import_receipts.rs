@@ -224,8 +224,13 @@ where
         // Update total_receipts after all filtering
         total_receipts += receipts.iter().map(|v| v.len()).sum::<usize>();
 
-        let execution_outcome =
-            ExecutionOutcome::new(Default::default(), receipts, first_block, Default::default());
+        let execution_outcome = ExecutionOutcome::new(
+            Default::default(),
+            receipts,
+            first_block,
+            Default::default(),
+            Default::default(),
+        );
 
         // finally, write the receipts
         provider.write_state(

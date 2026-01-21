@@ -2587,6 +2587,7 @@ impl<TX: DbTxMut + DbTx + 'static, N: NodeTypesForProvider> StateWriter
             receipts,
             start_block_number,
             Vec::new(),
+            Vec::new(),
         ))
     }
 }

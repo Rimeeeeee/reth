@@ -669,14 +669,15 @@ where
     //     &self,
     //     block_id: BlockId,
     // ) -> RpcResult<Option<BlockAccessList>> {
-    //     let block = self
-    //         .provider()
-    //         .block_by_id(block_id)
-    //         .to_rpc_result()?
-    //         .ok_or(EthApiError::HeaderNotFound(block_id))?;
-    //     let block = block.into_ethereum_block();
-    //     Ok(block.body().block_access_list().clone())
-    // }
+    // let block = self
+    //     .provider()
+    //     .block_by_id(block_id)
+    //     .to_rpc_result()?
+    //     .ok_or(EthApiError::HeaderNotFound(block_id))?;
+    // let block = block.into_ethereum_block();
+    // Ok(block.body().block_access_list().clone())
+    //}
+
     /// Handler for `debug_getRawTransaction`
     ///
     /// If this is a pooled EIP-4844 transaction, the blob sidecar is included.

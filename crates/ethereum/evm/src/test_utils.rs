@@ -127,7 +127,8 @@ impl<'a, DB: Database, I: Inspector<EthEvmContext<&'a mut State<DB>>>> BlockExec
         self,
     ) -> Result<(Self::Evm, BlockExecutionResult<Self::Receipt>), BlockExecutionError> {
         let Self { result, mut evm, .. } = self;
-        let ExecutionOutcome { bundle, receipts, requests, first_block: _ } = result;
+        let ExecutionOutcome { bundle, receipts, requests, first_block: _, block_access_list } =
+            result;
         let result = BlockExecutionResult {
             receipts: receipts.into_iter().flatten().collect(),
             requests: requests.into_iter().fold(Requests::default(), |mut reqs, req| {
@@ -135,7 +136,14 @@ impl<'a, DB: Database, I: Inspector<EthEvmContext<&'a mut State<DB>>>> BlockExec
                 reqs
             }),
             gas_used: 0,
-            block_access_list: None,
+            block_access_list: {
+                let v: Vec<_> = block_access_list.into_iter().flatten().collect();
+                if v.is_empty() {
+                    None
+                } else {
+                    Some(v)
+                }
+            },
             blob_gas_used: 0,
         };
 

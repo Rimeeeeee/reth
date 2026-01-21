@@ -714,6 +714,7 @@ mod tests {
             vec![vec![]],
             1,
             vec![],
+            vec![],
         );
 
         let execution_outcome2 = ExecutionOutcome::new(
@@ -729,6 +730,7 @@ mod tests {
             ),
             vec![vec![]],
             2,
+            vec![],
             vec![],
         );
 
@@ -802,6 +804,7 @@ mod tests {
             receipts,
             requests: vec![],
             first_block: 10,
+            ..Default::default()
         };
 
         // Create a Chain object with a BTreeMap of blocks mapped to their block numbers,
@@ -821,6 +824,7 @@ mod tests {
             receipts: vec![vec![receipt1]],
             requests: vec![],
             first_block: 10,
+            ..Default::default()
         };
 
         // Assert that the execution outcome at the first block contains only the first receipt

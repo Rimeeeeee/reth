@@ -29,6 +29,10 @@ pub(crate) fn to_execution_outcome(
         receipts: vec![block_execution_output.receipts.clone()],
         first_block: block_number,
         requests: vec![block_execution_output.requests.clone()],
+        block_access_list: vec![block_execution_output
+            .block_access_list
+            .clone()
+            .unwrap_or_default()],
     }
 }
 
