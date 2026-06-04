@@ -66,6 +66,8 @@ pub(super) struct SparseTrieCacheTask<A = ConfigurableSparseTrie, S = Configurab
     account_updates: B256Map<LeafUpdate>,
     /// Storage trie updates. hashed address -> slot -> update.
     storage_updates: B256Map<B256Map<LeafUpdate>>,
+    /// Precomputed post-block storage roots from the Bogota BAL.
+    precomputed_storage_roots: B256Map<B256>,
 
     /// Account updates that are buffered but were not yet applied to the trie.
     new_account_updates: B256Map<LeafUpdate>,
@@ -158,6 +160,7 @@ where
             max_targets_for_chunking: DEFAULT_MAX_TARGETS_FOR_CHUNKING,
             account_updates: Default::default(),
             storage_updates: Default::default(),
+            precomputed_storage_roots: Default::default(),
             new_account_updates: Default::default(),
             new_storage_updates: Default::default(),
             pending_account_updates: Default::default(),
@@ -208,6 +211,7 @@ where
                 StateRootMessage::HashedStateUpdate(state) => {
                     SparseTrieTaskMessage::HashedState(state)
                 }
+                StateRootMessage::StorageRoots(roots) => SparseTrieTaskMessage::StorageRoots(roots),
             };
             if hashed_state_tx.send(msg).is_err() {
                 break;
@@ -426,6 +430,9 @@ where
             SparseTrieTaskMessage::PrefetchProofs(targets) => self.on_prewarm_targets(targets),
             SparseTrieTaskMessage::HashedState(hashed_state) => {
                 self.on_hashed_state_update(hashed_state)
+            }
+            SparseTrieTaskMessage::StorageRoots(roots) => {
+                self.precomputed_storage_roots.extend(roots);
             }
             SparseTrieTaskMessage::FinishedStateUpdates => {
                 let _ = self
@@ -694,6 +701,9 @@ where
         let mut tries_to_compute_roots: Vec<(B256, SendStorageTriePtr<S>)> =
             Vec::with_capacity(addresses_to_compute_roots.len());
         for address in addresses_to_compute_roots {
+            if self.precomputed_storage_roots.contains_key(&address) {
+                continue;
+            }
             if let Some(trie) = self.trie.storage_tries_mut().get_mut(&address) &&
                 !trie.is_root_cached()
             {
@@ -761,7 +771,7 @@ where
                         // If account has pending storage updates, it is still pending.
                         return true;
                     } else if let Some(account) = account.take() {
-                        let storage_root = self.trie.storage_root(addr).expect("updates are drained, storage trie should be revealed by now");
+                        let storage_root = self.storage_root(addr).expect("updates are drained, storage trie should be revealed by now");
                         let encoded = encode_account_leaf_value(account, storage_root, account_rlp_buf);
                         self.account_updates.insert(*addr, LeafUpdate::Changed(encoded));
                         num_promoted += 1;
@@ -790,7 +800,7 @@ where
 
                     (account, storage_root)
                 } else {
-                    (trie_account.map(Into::into), self.trie.storage_root(addr).expect("account had storage updates that were applied to its trie, storage root must be revealed by now"))
+                    (trie_account.map(Into::into), self.storage_root(addr).expect("account had storage updates that were applied to its trie, storage root must be revealed by now"))
                 };
 
                 let encoded = encode_account_leaf_value(account, storage_root, account_rlp_buf);
@@ -812,6 +822,13 @@ where
         }
 
         Ok(())
+    }
+
+    fn storage_root(&mut self, address: &B256) -> Option<B256> {
+        self.precomputed_storage_roots
+            .get(address)
+            .copied()
+            .or_else(|| self.trie.storage_root(address))
     }
 
     fn dispatch_pending_targets(&mut self) {
@@ -904,6 +921,8 @@ impl PendingTargets {
 enum SparseTrieTaskMessage {
     /// A hashed state update ready to be processed.
     HashedState(HashedPostState),
+    /// Precomputed post-block storage roots keyed by hashed account address.
+    StorageRoots(B256Map<B256>),
     /// Prefetch proof targets (passed through directly).
     PrefetchProofs(MultiProofTargetsV2),
     /// Signals that all state updates have been received.
