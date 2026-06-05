@@ -598,6 +598,8 @@ where
             .executor_for_block(&mut self.db, block)
             .map_err(BlockExecutionError::other)?;
 
+        let evm_env =
+            self.strategy_factory.evm_env(block.header()).map_err(BlockExecutionError::other)?;
         let has_bal = block.header().block_access_list_hash().is_some();
         let evm_env =
             self.strategy_factory.evm_env(block.header()).map_err(BlockExecutionError::other)?;
