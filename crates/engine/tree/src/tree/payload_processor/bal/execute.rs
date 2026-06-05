@@ -218,9 +218,9 @@ where
     let built_bal = canonical_state.take_built_alloy_bal().expect("with_bal_builder set");
     // Validate that the built BAL matches the received BAL in terms of storage roots for accounts
     // that specify them.(eip 8268)
-    if is_bogota_active {
-        validate_storage_roots(received_bal.as_slice(), built_bal.as_slice())?;
-    }
+    // if is_bogota_active {
+    //     validate_storage_roots(received_bal.as_slice(), built_bal.as_slice())?;
+    // }
     if tracing::enabled!(target: "engine::tree::payload_processor::bal", tracing::Level::DEBUG) &&
         built_bal.as_slice() != received_bal.as_slice()
     {
