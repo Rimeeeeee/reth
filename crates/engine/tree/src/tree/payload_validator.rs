@@ -42,7 +42,7 @@ use crate::tree::{
     error::{InsertBlockError, InsertBlockErrorKind, InsertPayloadError},
     instrumented_state::{InstrumentedStateProvider, StateProviderMetrics, StateProviderStats},
     multiproof::{StateRootComputeOutcome, StateRootHandle},
-    payload_processor::PayloadProcessor,
+    payload_processor::{bal_storage_root_to_b256, PayloadProcessor},
     precompile_cache::{CachedPrecompile, CachedPrecompileMetrics, PrecompileCacheMap},
     types::{InsertPayloadResult, ValidationOutput},
     CacheWaitDurations, CachedStateProvider, EngineApiMetrics, EngineApiTreeState, ExecutionEnv,
@@ -1366,8 +1366,7 @@ where
             .into_iter()
             .flat_map(|bal| bal.iter())
             .filter_map(|account| {
-                account
-                    .storage_root()
+                bal_storage_root_to_b256(account.storage_root_value())
                     .map(|storage_root| (keccak256(account.address()), storage_root))
             })
             .collect()

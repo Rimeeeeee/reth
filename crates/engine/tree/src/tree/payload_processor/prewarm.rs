@@ -12,7 +12,7 @@
 //! 3. When actual block execution happens, it benefits from the warmed cache
 
 use crate::tree::{
-    payload_processor::multiproof::StateRootMessage,
+    payload_processor::{bal_storage_root_to_b256, multiproof::StateRootMessage},
     precompile_cache::{CachedPrecompile, PrecompileCacheMap},
     CachedStateCacheMetrics, CachedStateMetrics, CachedStateProvider, ExecutionEnv,
     PayloadExecutionCache, SavedCache, StateProviderBuilder,
@@ -382,7 +382,8 @@ where
                         .as_bal()
                         .iter()
                         .filter_map(|account| {
-                            account.storage_root().map(|root| (keccak256(account.address()), root))
+                            bal_storage_root_to_b256(account.storage_root_value())
+                                .map(|root| (keccak256(account.address()), root))
                         })
                         .collect::<B256Map<_>>();
                     if !storage_roots.is_empty() {
