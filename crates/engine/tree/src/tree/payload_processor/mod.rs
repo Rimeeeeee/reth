@@ -1029,7 +1029,10 @@ where
 #[cfg(test)]
 mod tests {
     use crate::tree::{
-        payload_processor::{evm_state_to_hashed_post_state, ExecutionEnv, PayloadProcessor},
+        payload_processor::{
+            bal_storage_root_to_b256, evm_state_to_hashed_post_state, ExecutionEnv,
+            PayloadProcessor,
+        },
         precompile_cache::PrecompileCacheMap,
         ExecutionCache, PayloadExecutionCache, SavedCache, StateProviderBuilder, TreeConfig,
     };
