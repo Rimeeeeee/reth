@@ -2,6 +2,7 @@
 
 use super::precompile_cache::PrecompileCacheMap;
 use crate::tree::{
+    bal_storage_root_to_b256,
     payload_processor::prewarm::{PrewarmCacheTask, PrewarmContext, PrewarmMode, PrewarmTaskEvent},
     sparse_trie::SparseTrieCacheTask,
     CacheWaitDurations, CachedStateCacheMetrics, CachedStateMetrics, CachedStateMetricsSource,
